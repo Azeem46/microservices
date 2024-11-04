@@ -37,6 +37,8 @@ The directory structure for both services is shown below:
 ```
 project-root/
 ├── user-service/
+│   ├── controllers/
+│   ├── middleware/
 │   ├── models/
 │   ├── routes/
 │   ├── utils/
@@ -46,12 +48,13 @@ project-root/
     ├── models/
     ├── routes/
     ├── utils/
-    ├── consumer.js
     └── app.js
 ```
 
 Each service contains:
 
+- **controllers**: Handles logic for each endpoint.
+- **middleware**: Functions that can be used to perform tasks before or after a request is handled.
 - **models/**: Database schemas.
 - **routes/**: Express routes.
 - **utils/**: Utility files for RabbitMQ setup.
@@ -310,22 +313,30 @@ module.exports = { connectQueue };
 ### 3. Creating the Consumer Logic in `consumer.js`
 
 ```javascript
-const { connectQueue } = require("./utils/rabbitmq");
-const UserModel = require("./models/UserModel");
+// consumer.js
+const UserModel = require("../models/UserModel");
+const { consumeMessages } = require("../utils/rabbitmq");
 
 const handleUserEvent = async (message) => {
-  const { userId, email, name, event } = JSON.parse(message.content.toString());
+  const { userId, email, name, event } = message;
 
-  if (event === "user_signup") {
-    await UserModel.create({ _id: userId, email, name });
-    console.log("User created in Post Service:", name);
-  } else if (event === "user_delete") {
-    await UserModel.findByIdAndDelete(userId);
-    console.log("User deleted in Post Service:", userId);
+  try {
+    if (event === "user_signup") {
+      // Create a user record in Post Service's database
+      await UserModel.create({ _id: userId, email, name });
+      console.log("User created in Post Service:", name);
+    } else if (event === "user_delete") {
+      // Delete the user record
+      await UserModel.findOneAndDelete({ _id: userId });
+      console.log("User deleted in Post Service:", userId);
+    }
+  } catch (error) {
+    console.error("Error handling user event:", error);
   }
 };
 
-connectQueue(handleUserEvent);
+// Start consuming messages
+consumeMessages(handleUserEvent);
 ```
 
 ### 4. Setting Up `app.js` in Post Service
@@ -430,5 +441,3 @@ By following the steps outlined in this README, you will have established a basi
 By adhering to these practices and troubleshooting guidelines, you can maintain a robust microservices architecture that can grow and evolve with your application's needs.
 
 ---
-
-Feel free to adjust or expand upon any section to better fit your project's specific details and requirements!

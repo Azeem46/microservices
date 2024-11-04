@@ -1,5 +1,5 @@
 // consumer.js
-const UserModel = require("../models/UserModel"); // Assumes User schema exists in Post Service
+const UserModel = require("../models/UserModel");
 const { consumeMessages } = require("../utils/rabbitmq");
 
 const handleUserEvent = async (message) => {
